@@ -141,7 +141,7 @@
 (defun wrap-schema (schema)
   (etypecase schema
 	(hash-table (lambda () (schema-from-ht schema)))
-	(otherwise schema)))
+	(t schema)))
 
 ;; Factory for component objects.
 ;;
