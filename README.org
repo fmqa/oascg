@@ -28,7 +28,7 @@ It is written in Common LISP and is designed to support multiple output transfor
 To translate models in the Petstore API to TypeScript, run the following:
 
 #+begin_src sh
-  curl -H 'Accept: text/typescript' http://192.168.56.101:8080 -d@examples/oas-pp.json
+  curl -H 'Accept: text/typescript' http://localhost:8080 -d@examples/oas-pp.json
   export interface Pet {id: number;name: string;tag?: string;}
   export type Pets = Array<Pet>
   export interface Error {code: number;message: string;}
