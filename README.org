@@ -14,9 +14,10 @@ It is written in Common LISP and is designed to support multiple output transfor
 
 ** Installation / Launch
 
-1. Install [[https://www.quicklisp.org/beta/][Quicklisp]]
-2. Clone this project to ~​~/quicklisp/local-projects~
-3. Run the following command to start the server on port 8080
+1. Install [[http://www.sbcl.org/][SBCL]]
+2. Install [[https://www.quicklisp.org/beta/][Quicklisp]]
+3. Clone this project to ~​~/quicklisp/local-projects~
+4. Run the following command to start the server on port 8080
 
 #+begin_src sh
   sbcl --disable-debugger --eval '(ql:quickload "oascg/web")' --eval '(oascg-web:start-server-and-wait)'
