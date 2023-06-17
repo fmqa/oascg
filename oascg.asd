@@ -13,7 +13,7 @@
   :depends-on ("oascg" "com.inuoe.jzon" "fiveam")
   :components ((:module "tests" :components ((:file "main"))))
   :perform (test-op (o s)
-					(uiop:symbol-call :fiveam :run! (find-symbol* :oascg-core :oascg-core-tests))))
+                    (uiop:symbol-call :fiveam :run! (find-symbol* :oascg-core :oascg-core-tests))))
 
 (defsystem "oascg/typescript"
   :pathname "typescript"
@@ -32,8 +32,8 @@
   :depends-on ("oascg" "oascg/typescript" "com.inuoe.jzon" "fiveam")
   :components ((:module "tests" :components ((:file "main"))))
   :perform (test-op (o s)
-					(uiop:symbol-call :fiveam :run!
-									  (find-symbol* :oascg-typescript :oascg-typescript-tests))))
+                    (uiop:symbol-call :fiveam :run!
+                                      (find-symbol* :oascg-typescript :oascg-typescript-tests))))
 
 (defsystem "oascg/web"
   :pathname "web"
