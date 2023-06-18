@@ -47,22 +47,50 @@
 
 (defpackage oascg-core
   (:use :cl)
-  (:export #:unresolved-schema-error #:unresolved-schema-uri
-           #:nullable-schema #:schema-nullable
-           #:simple-schema #:simple-schema-type #:simple-schema-format #:simple-schema-enum
-           #:array-schema #:array-schema-items
-           #:object-schema #:object-schema-properties
-           #:ref-schema #:ref-schema-uri #:ref-schema-resolved #:schema-ref-resolve #:schema-ensure-resolved
-           #:discriminated-property #:discriminated-property-name #:discriminated-property-mapping
-           #:comb-schema #:comb-schema-op #:comb-schema-operands #:comb-schema-discriminator
-           #:component #:component-name #:component-schema #:component-ensure-schema
-           #:make-component #:register-component-schema #:register-components-from-ht
-           #:with-components-from-ht #:map-components #:resolve-local-component-by-uri #:resolve-local-component-handler
+  (:export #:unresolved-schema-error
+           #:unresolved-schema-uri
+
+           #:nullable-schema
+           #:schema-nullable
+
+           #:simple-schema
+           #:simple-schema-type #:simple-schema-format #:simple-schema-enum
+
+           #:array-schema
+           #:array-schema-items
+
+           #:object-schema
+           #:object-schema-properties
+
+           #:ref-schema
+           #:ref-schema-uri #:ref-schema-resolved
+           #:schema-ref-resolve #:schema-ensure-resolved
+
+           #:discriminated-property
+           #:discriminated-property-name #:discriminated-property-mapping
+
+           #:comb-schema
+           #:comb-schema-op #:comb-schema-operands #:comb-schema-discriminator
+
+           #:component
+           #:component-name #:component-schema
+           #:component-ensure-schema
+           #:make-component
+           #:register-component-schema #:register-components-from-ht
+           #:with-components-from-ht
+           #:map-components
+           #:resolve-local-component-by-uri
+           #:resolve-local-component-handler
+
            #:schema-iterator
            #:schema-unboundedp
            #:schema-from-ht))
 
 (in-package :oascg-core)
+
+;;;;;;
+;;;;;; PARAMETERS
+;;;;;;
 
 ;; Should be bound to a hash table representing the relationship
 ;;
@@ -71,7 +99,11 @@
 ;; Where SCHEMA-NAME is a STRING and COMPONENT is a COMPONENT object.
 (defparameter *components* nil "Components by name.")
 
-;; UNRESOLVED-SCHEMA-ERROR is signalled when a $ref schema could not be resolved.
+;;;;;;
+;;;;;; CONDITIONS
+;;;;;;
+
+;; UNRESOLVED-SCHEMA-ERROR is signalled when a schema could not be resolved.
 ;; The caller can invoke the restarts
 ;;
 ;;    USE-VALUE to use the given value as a replacement schema.
@@ -81,34 +113,54 @@
   ((uri :initarg :uri :reader unresolved-schema-uri
         :documentation "URI of the unresolved schema.")))
 
+;;;;;;
+;;;;;; DATA TYPES
+;;;;;;
+
 ;; Superclass for schemas that have the 'nullable' OAS property.
 ;; This included integer, number, string, array, object schemas, as well
 ;; as the unbounded schema.
 (defclass nullable-schema ()
-  ((nullable :initarg :nullable :accessor schema-nullable :initform nil
+  ((nullable :initarg :nullable
+             :accessor schema-nullable
+             :initform nil
              :documentation "Indicates whether schema is nullable.")))
 
 ;; Scalar schema type.
 (defclass simple-schema (nullable-schema)
-  ((type :initarg :type :accessor simple-schema-type :documentation "Schema type.")
-   (format :initarg :format :accessor simple-schema-format :initform nil :documentation "Schema format.")
-   (enum :initarg :enum :accessor simple-schema-enum :initform nil :documentation "Enumeration vector.")))
+  ((type :initarg :type
+         :accessor simple-schema-type
+         :documentation "Schema type.")
+   (format :initarg :format
+           :accessor simple-schema-format
+           :initform nil
+           :documentation "Schema format.")
+   (enum :initarg :enum
+         :accessor simple-schema-enum
+         :initform nil
+         :documentation "Enumeration vector.")))
 
 ;; Array schema type.
 (defclass array-schema (nullable-schema)
-  ((items :initarg :items :accessor array-schema-items :documentation "Schema of array elements.")))
+  ((items :initarg :items
+          :accessor array-schema-items
+          :documentation "Schema of array elements.")))
 
 ;; Object schema type.
 (defclass object-schema (nullable-schema)
   ((properties :initarg :properties
                :accessor object-schema-properties
                :initform (make-hash-table :test 'equal)
-               :documentation "Schema of each property, with the property name as key.")))
+               :documentation "Schema of each property, by property name.")))
 
 ;; $ref pseudo-schema type.
 (defclass ref-schema ()
-  ((uri :initarg :uri :accessor ref-schema-uri :documentation "Reference target URI.")
-   (resolved :initarg :resolved :accessor ref-schema-resolved :initform nil
+  ((uri :initarg :uri
+        :accessor ref-schema-uri
+        :documentation "Reference target URI.")
+   (resolved :initarg :resolved
+             :accessor ref-schema-resolved
+             :initform nil
              :documentation "Resolved target schema.")))
 
 ;; Sum type discriminator.
@@ -127,19 +179,60 @@
 ;;
 ;; This represents allOf, oneOf, and anyOf schemas.
 (defclass comb-schema ()
-  ((op :initarg :op :accessor comb-schema-op :documentation "Schema combinator operator.")
-   (operands :initarg :operands :accessor comb-schema-operands :documentation "Schemas to combine.")
-   (discriminator :initarg :discriminator :accessor comb-schema-discriminator :initform nil
+  ((op :initarg :op
+       :accessor comb-schema-op
+       :documentation "Schema combinator operator.")
+   (operands :initarg :operands
+             :accessor comb-schema-operands
+             :documentation "Schemas to combine.")
+   (discriminator :initarg :discriminator
+                  :accessor comb-schema-discriminator
+                  :initform nil
                   :documentation "Sum type discriminator property.")))
 
 ;; Named component schema type.
 (defclass component ()
-  ((name :initarg :name :accessor component-name
+  ((name :initarg :name
+         :accessor component-name
          :documentation "Component name.")
-   (schema :initarg :schema :accessor component-schema :initform nil
+   (schema :initarg :schema
+           :accessor component-schema
+           :initform nil
            :documentation "Component schema or schema factory.")))
 
-;; Returns the schema of a COMPONENT object, ensuring that a lazy schema is evaluated.
+;;;;;;
+;;;;;; PROCEDURES
+;;;;;;
+
+;; GENERIC SCHEMA PROCEDURES ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defgeneric schema-iterator (parent)
+  (:documentation "Returns an iterator function."))
+
+(defmethod schema-iterator ((parent array-schema))
+  (lambda (it) (funcall it (array-schema-items parent))))
+
+(defmethod schema-iterator ((parent object-schema))
+  (lambda (it)
+    (when (object-schema-properties parent)
+      (maphash (lambda (name pair)
+                 (destructuring-bind (schema &rest required) pair
+                   (funcall it schema name required)))
+               (object-schema-properties parent)))))
+
+(defgeneric schema-unboundedp (schema)
+  (:documentation "Tests whether a given schema is unbounded"))
+(defmethod schema-unboundedp (schema) nil)
+(defmethod schema-unboundedp ((schema object-schema))
+  (and (object-schema-properties schema)
+       (= 0 (hash-table-count (object-schema-properties schema)))))
+
+;; COMPONENT PROCEDURES ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Returns the schema of a COMPONENT object, ensuring that a lazy schema is
+;; evaluated.
 (defun component-ensure-schema (comp)
   (if (functionp (component-schema comp))
       (setf (component-schema comp) (funcall (component-schema comp)))
@@ -147,8 +240,8 @@
 
 ;; Wraps a schema for lazy evaluation.
 ;;
-;; If the given OAS schema is a hash table representing an OAS schema, it is wrapped
-;; in a function that returns a schema object when called.
+;; If the given OAS schema is a hash table representing an OAS schema, it is
+;; wrapped in a function that returns a schema object when called.
 ;;
 ;; Otherwise, it is equivalent to the identity function.
 (defun wrap-schema (schema)
@@ -220,31 +313,8 @@
           (invoke-restart 'use-value found)
           (and next (funcall next uri))))))
 
-;; Add a schema PROPERTY-SCHEMA as a subschema representing a named property
-;; NAME to OBJECT-SCHEMA.
-(defun object-schema-add-property (object-schema name property-schema &optional required)
-  (setf (gethash name (object-schema-properties object-schema))
-        (cons property-schema required)))
-
-(defgeneric schema-iterator (parent)
-  (:documentation "Returns an iterator function that calls an argument function with all subschemas"))
-
-(defmethod schema-iterator ((parent array-schema))
-  (lambda (it) (funcall it (array-schema-items parent))))
-
-(defmethod schema-iterator ((parent object-schema))
-  (lambda (it)
-    (when (object-schema-properties parent)
-      (maphash (lambda (name pair)
-                 (destructuring-bind (schema &rest required) pair
-                   (funcall it schema name required)))
-               (object-schema-properties parent)))))
-
-(defgeneric schema-unboundedp (schema) (:documentation "Tests whether a given schema is unbounded"))
-(defmethod schema-unboundedp (schema) nil)
-(defmethod schema-unboundedp ((schema object-schema))
-  (and (object-schema-properties schema)
-       (= 0 (hash-table-count (object-schema-properties schema)))))
+;; REF-SCHEMA PROCEDURES ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Factory for REF-SCHEMA objects.
 ;;
@@ -261,32 +331,36 @@
 (defun schema-ref-resolve (schema)
   (or (ref-schema-resolved schema)
       (setf (ref-schema-resolved schema)
-            (restart-case (error 'unresolved-schema-error :uri (ref-schema-uri schema))
+            (restart-case (error 'unresolved-schema-error
+                                 :uri (ref-schema-uri schema))
               (use-value (value) :report "Use a new schema" value)
               (continue () :report "Continue without resolving" nil)))))
 
-(defgeneric schema-ensure-resolved (schema) (:documentation "Ensure a schema is resolved"))
+(defgeneric schema-ensure-resolved (schema)
+  (:documentation "Ensure a schema is resolved"))
+
 (defmethod schema-ensure-resolved (schema) schema)
+
 (defmethod schema-ensure-resolved ((schema ref-schema))
   (schema-ensure-resolved (schema-ref-resolve schema)))
 
-;; Infers the type of the OAS schema represented by the hash table TABLE.
-;; Returns a symbol representing the inferred type.
-(defun schema-ht-infer-type (table)
-  (labels ((has (key) (gethash key table))
-           (has= (key expected) (string= expected (has key)))
-           (type= (expected) (has= "type" expected)))
-    (cond ((has "$ref") :ref)
-          ((has "allOf") :all-of)
-          ((has "oneOf") :one-of)
-          ((has "anyOf") :any-of)
-          ((type= "array") :array)
-          ((type= "object") :object)
-          ((type= "number") :number)
-          ((type= "integer") :integer)
-          ((type= "string") :string)
-          ((type= "boolean") :boolean)
-          (t :object))))
+;; SIMPLE-SCHEMA PROCEDURES ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Factory for SIMPLE-SCHEMA objects.
+;;
+;; TABLE should be an OAS hash table / dictionary.
+(defun schema-simple-from-ht (table type)
+  (let* ((format (gethash "format" table))
+         (enum (gethash "enum" table))
+         (nullable (gethash "nullable" table))
+         (instance (make-instance 'simple-schema
+                                  :type type :format format :enum enum)))
+    (setf (schema-nullable instance) nullable)
+    instance))
+
+;; ARRAY-SCHEMA PROCEDURES ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Factory for ARRAY-SCHEMA objects.
 ;;
@@ -297,6 +371,15 @@
          (instance (make-instance 'array-schema :items (schema-from-ht items))))
     (setf (schema-nullable instance) nullable)
     instance))
+
+;; OBJECT-SCHEMA PROCEDURES ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Add a schema P-SCHEMA as a subschema representing a named property
+;; NAME to the OBJECT-SCHEMA denoted by O-SCHEMA.
+(defun object-schema-add-property (o-schema name p-schema &optional required)
+  (setf (gethash name (object-schema-properties o-schema))
+        (cons p-schema required)))
 
 ;; Factory for OBJECT-SCHEMA objects.
 ;;
@@ -314,24 +397,16 @@
     (setf (schema-nullable instance) nullable)
     (when properties
       (maphash (lambda (name value) (object-schema-add-property
-                                     instance
-                                     name
-                                     (schema-from-ht value)
-                                     (and required (gethash name required))))
+                                instance
+                                name
+                                (schema-from-ht value)
+                                (and required (gethash name required))))
                properties))
     instance))
 
-;; Factory for SIMPLE-SCHEMA objects.
-;;
-;; TABLE should be an OAS hash table / dictionary.
-(defun schema-simple-from-ht (table type)
-  (let* ((format (gethash "format" table))
-         (enum (gethash "enum" table))
-         (nullable (gethash "nullable" table))
-         (instance (make-instance 'simple-schema
-                                  :type type :format format :enum enum)))
-    (setf (schema-nullable instance) nullable)
-    instance))
+
+;; DISCRIMINATED-PROPERTY PROCEDURES ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun discriminator-from-ht (table)
   (let ((discriminator (gethash "discriminator" table)))
@@ -339,7 +414,11 @@
       (let ((name (gethash "propertyName" discriminator))
             (mapping (gethash "mapping" discriminator)))
         (when name
-             (make-instance 'discriminated-property :name name :mapping mapping))))))
+          (make-instance 'discriminated-property
+                         :name name :mapping mapping))))))
+
+;; COMB-SCHEMA PROCEDURES ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun comb-type-key (type)
   (ecase type
@@ -359,14 +438,40 @@
                        :discriminator (discriminator-from-ht table))
         (error "Empty ~A schema" type))))
 
+;; OPENAPI DOCUMENT PROCEDURES ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Infers the type of the OAS schema represented by the hash table TABLE.
+;; Returns a symbol representing the inferred type.
+(defun schema-ht-infer-type (table)
+  (labels ((has (key) (gethash key table))
+           (has= (key expected) (string= expected (has key)))
+           (type= (expected) (has= "type" expected)))
+    (cond ((has "$ref") :ref)
+          ((has "allOf") :all-of)
+          ((has "oneOf") :one-of)
+          ((has "anyOf") :any-of)
+          ((type= "array") :array)
+          ((type= "object") :object)
+          ((type= "number") :number)
+          ((type= "integer") :integer)
+          ((type= "string") :string)
+          ((type= "boolean") :boolean)
+          (t :object))))
+
 ;; Abstract factory for schema objects.
 ;;
 ;; TABLE should be an OAS hash table / dictionary.
 (defun schema-from-ht (table)
   (let ((inferred-type (schema-ht-infer-type table)))
     (ecase inferred-type
-      (:ref (schema-ref-from-ht table))
-      (:array (schema-array-from-ht table))
-      (:object (schema-object-from-ht table))
-      ((:number :integer :string :boolean) (schema-simple-from-ht table inferred-type))
-      ((:all-of :any-of :one-of) (schema-comb-from-ht table inferred-type)))))
+      (:ref
+       (schema-ref-from-ht table))
+      (:array
+       (schema-array-from-ht table))
+      (:object
+       (schema-object-from-ht table))
+      ((:number :integer :string :boolean)
+       (schema-simple-from-ht table inferred-type))
+      ((:all-of :any-of :one-of)
+       (schema-comb-from-ht table inferred-type)))))
