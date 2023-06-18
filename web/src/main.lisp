@@ -1,3 +1,7 @@
+;; OAS CODE GENERATOR - WEB SERVICE
+;;
+;; This module provides a code generator HTTP server.
+
 (defpackage oascg-web
   (:use :cl)
   (:export #:start-server #:start-server-and-wait
@@ -33,19 +37,24 @@
     (when post-data
       (com.inuoe.jzon:parse post-data))))
 
+(defun oas-components (table)
+  (let ((components (gethash "components" table)))
+    (and components (gethash "schemas" components))))
+
+(defun bad-request-response ()
+  (setf (hunchentoot:return-code*) hunchentoot:+http-bad-request+)
+  (setf (hunchentoot:content-type*) "text/plain")
+  "Bad Request")
+
 (defun oas-to-typescript ()
   (let* ((body (handler-case (oas-request-body)
                  (com.inuoe.jzon:json-parse-error ()
-                   (setf (hunchentoot:return-code*) hunchentoot:+http-bad-request+)
-                   (return-from oas-to-typescript "Bad Request"))))
-         (components (and body (gethash "components" body)))
-         (schemas (and components (gethash "schemas" components))))
+                   (return-from oas-to-typescript (bad-request-response)))))
+         (schemas (and body (oas-components body))))
     (if schemas
         (progn (setf (hunchentoot:content-type*) "text/typescript")
                (format nil "~{~A~%~}" (oascg-typescript:export-typescript-components schemas)))
-        (progn (setf (hunchentoot:return-code*) hunchentoot:+http-bad-request+)
-               (setf (hunchentoot:content-type*) "text/plain")
-               "Bad Request"))))
+        (bad-request-response))))
 
 (defun handle-oas-post ()
   (media-type-case ("text/typescript" #'oas-to-typescript)))
@@ -55,7 +64,8 @@
 
 (defun start-server (&optional (port 8080))
   (when *current-server*
-    (hunchentoot:stop *current-server*))
+    (hunchentoot:stop *current-server*)
+    (setf *current-server* nil))
   (hunchentoot:start (setf *current-server*
                            (make-instance 'hunchentoot:easy-acceptor :port port))))
 
@@ -64,4 +74,5 @@
   (sleep most-positive-fixnum))
 
 (defun stop-server ()
-  (hunchentoot:stop *current-server*))
+  (hunchentoot:stop *current-server*)
+  (setf *current-server* nil))
