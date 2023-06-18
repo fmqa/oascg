@@ -33,7 +33,7 @@
         "Not Acceptable")))
 
 (defun oas-request-body ()
-  (let ((post-data (hunchentoot:raw-post-data)))
+  (let ((post-data (hunchentoot:raw-post-data :force-teext t)))
     (when post-data
       (com.inuoe.jzon:parse post-data))))
 
