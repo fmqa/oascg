@@ -53,6 +53,7 @@
            #:array-schema #:array-schema-items
            #:object-schema #:object-schema-properties
            #:ref-schema #:ref-schema-uri #:ref-schema-resolved #:schema-ref-resolve #:schema-ensure-resolved
+           #:discriminated-property #:discriminated-property-name #:discriminated-property-mapping
            #:comb-schema #:comb-schema-op #:comb-schema-operands #:comb-schema-discriminator
            #:component #:component-name #:component-schema #:component-ensure-schema
            #:make-component #:register-component-schema #:register-components-from-ht
@@ -109,6 +110,18 @@
   ((uri :initarg :uri :accessor ref-schema-uri :documentation "Reference target URI.")
    (resolved :initarg :resolved :accessor ref-schema-resolved :initform nil
              :documentation "Resolved target schema.")))
+
+;; Sum type discriminator.
+(defclass discriminated-property ()
+  ((name
+    :initarg :property-name
+    :accessor discriminated-property-name
+    :documentation "Discriminator property name.")
+   (mapping
+    :initarg :mapping
+    :accessor discriminated-property-mapping
+    :initform nil
+    :documentation "Maps property values to schemas.")))
 
 ;; Combinatoric pseudo-schema.
 ;;
@@ -323,10 +336,10 @@
 (defun discriminator-from-ht (table)
   (let ((discriminator (gethash "discriminator" table)))
     (when discriminator
-      (maphash (lambda (k v)
-                 (setf (gethash k discriminator)
-                       (make-instance 'ref-schema :uri v)))
-               discriminator))))
+      (let ((name (gethash "propertyName" discriminator))
+            (mapping (gethash "mapping" discriminator)))
+        (when name
+             (make-instance 'discriminated-property :name name :mapping mapping))))))
 
 (defun comb-type-key (type)
   (ecase type
